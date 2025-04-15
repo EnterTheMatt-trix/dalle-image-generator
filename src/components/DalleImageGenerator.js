@@ -8,10 +8,11 @@ const DalleImageGenerator = () => {
   const [countdown, setCountdown] = useState(30);
   const [error, setError] = useState(null);
   const [imageLoaded, setImageLoaded] = useState(false);
-  const [blurAmount, setBlurAmount] = useState(20);
+  const [blurAmount, setBlurAmount] = useState(30);
   const [opacity, setOpacity] = useState(0);
   const inputRef = useRef(null);
   const blurAnimationRef = useRef(null);
+  const [imagesLoaded, setImagesLoaded] = useState(0);
 
   // Automatically focus the contentEditable div when the component mounts
   useEffect(() => {
@@ -39,7 +40,7 @@ const DalleImageGenerator = () => {
       
       // Gradually reduce blur over time
       const startTime = Date.now();
-      const duration = 3000; // 3 seconds for the animation (increased from 1.5s)
+      const duration = 3000; // 3 seconds for the animation
       
       const animateBlur = () => {
         const elapsed = Date.now() - startTime;
@@ -47,7 +48,7 @@ const DalleImageGenerator = () => {
         
         // Ease out cubic function for smoother end of animation
         const easeOutCubic = 1 - Math.pow(1 - progress, 3);
-        const newBlurAmount = 30 * (1 - easeOutCubic); // Increased from 20px to 30px
+        const newBlurAmount = 30 * (1 - easeOutCubic);
         
         setBlurAmount(newBlurAmount);
         
@@ -77,9 +78,10 @@ const DalleImageGenerator = () => {
 
       // Reset states
       setError(null);
-      setBlurAmount(30); // Increased from 20px to 30px
+      setBlurAmount(30);
       setOpacity(0);
       setImageLoaded(false);
+      setImagesLoaded(0);
       
       // Start loading and countdown
       setLoading(true);
@@ -111,8 +113,13 @@ const DalleImageGenerator = () => {
 
   // Handle image load event
   const handleImageLoad = () => {
-    setImageLoaded(true);
-    setLoading(false);
+    setImagesLoaded(prev => prev + 1);
+    
+    // Only set loaded state when the first image is loaded
+    if (imagesLoaded === 0) {
+      setImageLoaded(true);
+      setLoading(false);
+    }
   };
 
   // Function to reset the generator
@@ -122,10 +129,33 @@ const DalleImageGenerator = () => {
     setLoading(false);
     setCountdown(30);
     setError(null);
-    setBlurAmount(30); // Increased from 20px to 30px
+    setBlurAmount(30);
     setOpacity(0);
     setImageLoaded(false);
+    setImagesLoaded(0);
   };
+
+  // Generate random positions for the 3 images
+  const imagePositions = [
+    {
+      top: '10%',
+      left: '10%',
+      transform: 'rotate(-5deg)',
+      zIndex: 3,
+    },
+    {
+      top: '50%',
+      right: '10%',
+      transform: 'rotate(5deg)',
+      zIndex: 2,
+    },
+    {
+      bottom: '10%',
+      left: '30%',
+      transform: 'rotate(3deg)',
+      zIndex: 1,
+    }
+  ];
 
   return (
     <div style={styles.container}>
@@ -147,21 +177,33 @@ const DalleImageGenerator = () => {
         <div style={styles.countdown}>{countdown}</div>
       )}
 
-      {/* Image with blur effect */}
+      {/* Multiple floating images with blur effect */}
       {imageUrl && (
-        <div style={styles.imageContainer}>
-          <img
-            src={imageUrl}
-            alt="Generated"
-            style={{
-              ...styles.image,
-              opacity: opacity,
-              filter: `blur(${blurAmount}px)`,
-              transition: 'opacity 0.5s ease-in-out'
-            }}
-            onLoad={handleImageLoad}
-          />
+        <div style={styles.imagesContainer}>
+          {/* Create 3 instances of the same image */}
+          {imagePositions.map((position, index) => (
+            <div 
+              key={index} 
+              style={{
+                ...styles.floatingImageContainer,
+                ...position
+              }}
+            >
+              <img
+                src={imageUrl}
+                alt={`Generated Image ${index + 1}`}
+                style={{
+                  ...styles.image,
+                  opacity: opacity,
+                  filter: `blur(${blurAmount}px)`,
+                  transition: 'opacity 0.5s ease-in-out, filter 3s ease-out'
+                }}
+                onLoad={handleImageLoad}
+              />
+            </div>
+          ))}
           
+          {/* Reset button appears in the center */}
           {imageLoaded && (
             <button onClick={resetGenerator} style={styles.resetButton}>
               Generate New Image
@@ -192,6 +234,8 @@ const styles = {
     flexDirection: 'column',
     textAlign: 'center',
     backgroundColor: '#f0f4f8',
+    position: 'relative',
+    overflow: 'hidden',
   },
   textInput: {
     fontSize: '40px',
@@ -211,17 +255,30 @@ const styles = {
     fontSize: '80px',
     fontWeight: 'bold',
     color: '#0066ff',
+    zIndex: 10,
   },
-  imageContainer: {
+  imagesContainer: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    width: '100%',
+    height: '100%',
     display: 'flex',
-    flexDirection: 'column',
+    justifyContent: 'center',
     alignItems: 'center',
-    maxWidth: '90%',
+  },
+  floatingImageContainer: {
+    position: 'absolute',
+    maxWidth: '45%',
+    boxShadow: '0 8px 16px rgba(0, 0, 0, 0.2)',
+    borderRadius: '8px',
+    backgroundColor: 'white',
+    padding: '10px',
   },
   image: {
-    maxWidth: '100%',
-    maxHeight: '70vh',
-    boxShadow: '0 4px 8px rgba(0, 0, 0, 0.1)',
+    width: '100%',
+    height: 'auto',
+    maxHeight: '50vh',
     borderRadius: '4px',
   },
   error: {
@@ -232,10 +289,14 @@ const styles = {
     display: 'flex',
     flexDirection: 'column',
     alignItems: 'center',
+    zIndex: 10,
   },
   resetButton: {
-    marginTop: '20px',
-    padding: '10px 20px',
+    position: 'absolute',
+    bottom: '20px',
+    left: '50%',
+    transform: 'translateX(-50%)',
+    padding: '12px 24px',
     fontSize: '16px',
     backgroundColor: '#0066ff',
     color: 'white',
@@ -243,6 +304,8 @@ const styles = {
     borderRadius: '4px',
     cursor: 'pointer',
     transition: 'background-color 0.3s ease',
+    zIndex: 10,
+    boxShadow: '0 4px 8px rgba(0, 0, 0, 0.2)',
   }
 };
 
